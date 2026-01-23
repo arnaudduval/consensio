@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Bulletin de vote</h2>
+        </div>
+        <div class="card-body">
+            <h3 class="card-title mb-4">{{ election.title }}</h3>
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle-fill"></i> Votre jeton de vote : <strong>{{ token }}</strong>
+            </div>
+
+            {% if election.is_closed or election.end_date < timezone.now %}
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Élection terminée</h4>
+                    <p>Cette élection est terminée et les votes ne sont plus acceptés.</p>
+                </div>
+            {% else %}
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        {% for item in ballot_paper %}
+                            {% if not item.in_conflict %}
+                                <div class="candidate-card card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">{{ item.candidate.name }}</h5>
+                                            <div class="form-group mb-0" style="min-width: 200px;">
+                                                <select class="form-select" name="note_{{ item.candidate.id }}" required>
+                                                    <option value="" selected disabled>Sélectionnez une note</option>
+                                                    <option value="E">Excellent</option>
+                                                    <option value="TB">Très bien</option>
+                                                    <option value="B">Bien</option>
+                                                    <option value="P">Passable</option>
+                                                    <option value="R">À rejeter</option>
+                                                </select>
+                                                <div class="invalid-feedback">
+                                                    Veuillez sélectionner une note pour {{ item.candidate.name }}.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle-fill me-2"></i> Valider mon vote
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Validation côté client pour s'assurer que tous les candidats (sans conflit) ont une note
+document.querySelector('form.needs-validation').addEventListener('submit', function(event) {
+    let isValid = true;
+    const selects = document.querySelectorAll('select[required]');
+
+    selects.forEach(select => {
+        if (!select.value) {
+            isValid = false;
+            select.classList.add('is-invalid');
+        } else {
+            select.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+});
+</script>
+{% endblock %}

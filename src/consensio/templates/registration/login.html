@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Connexion</h2>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">Nom d'utilisateur</label>
+                            {{ form.username }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.password.id_for_label }}" class="form-label">Mot de passe</label>
+                            {{ form.password }}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

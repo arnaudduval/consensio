@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Détails de l'élection : {{ election.title }}</h1>
+    <p>{{ election.description }}</p>
+    <p><small class="text-muted">Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}</small></p>
+
+    <div class="mt-4">
+        <h3>Électeurs</h3>
+        <ul>
+            {% for elector in election.electors.all %}
+                <li>{{ elector.name }} ({{ elector.email }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="mt-4">
+        <h3>Candidats</h3>
+        <ul>
+            {% for candidate in election.candidates.all %}
+                <li>{{ candidate.name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% load custom_filters %}
+    <div class="mt-4">
+        <h3>Conflits d'intérêt</h3>
+        <div class="table-responsive"  style="overflow-x: auto; max-width: 100%;">
+            <table class="table table-bordered" style="width: auto; table-layout: fixed;">
+                <thead>
+                    <tr>
+                        <th style="min-width: 150px; width: auto;">Électeurs</th>
+                        {% for candidate in election.candidates.all %}
+                            <th class="text-center" style="width: 50px; height: auto; writing-mode: vertical-rl; text-orientation: mixed; padding: 5px;">
+                                {{ candidate.name }}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for elector in election.electors.all %}
+                        <tr>
+                            <td style="width: auto; min-width: 150px;">{{ elector.name }}</td>
+                            {% for candidate in election.candidates.all %}
+                                {% if conflicts_matrix|get_item:elector.id|get_item:candidate.id %}
+                                    <td class="text-center bg-danger" style="width: 50px; height: 50px;"></td>
+                                {% else %}
+                                    <td class="text-center bg-success" style="width: 50px; height: 50px;"></td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        {% if election.invitations_sent_at %}
+            <button class="btn btn-secondary" type="button" disabled>
+                Invitations envoyées le {{ election.invitations_sent_at|date:"d/m/Y à H:i:s" }}
+            </button>
+        {% else %}
+            <a href="{% url 'send_invitations' election.id %}" class="btn btn-primary">Envoyer les invitations à voter</a>
+        {% endif %}
+
+        {% if not election.is_closed %}
+            <a href="{% url 'close_election' election.id %}" class="btn btn-danger ms-2" onclick="return confirm('Êtes-vous sûr de vouloir fermer cette élection ? Cette action est irréversible.')">
+                <i class="bi bi-lock-fill"></i> Fermer l'élection
+            </a>
+        {% else %}
+            <button class="btn btn-secondary" type="button" disabled>
+                <i class="bi bi-lock-fill"></i> Élection fermée le {{ election.closed_at|date:"d/m/Y à H:i:s" }}
+            </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

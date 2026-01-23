@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Consensio - Jugement Majoritaire{% endblock %}</title>
+    <!-- Bootstrap CSS-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- local CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <!-- Nav bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Consensio</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            +:+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'index' %}">Accueil</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated and user.is_staff %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Gestion
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
+                            <li><a class="dropdown-item" href="{% url 'add_elector' %}">Ajouter un Électeur</a></li>
+                            <li><a class="dropdown-item" href="{% url 'add_election' %}">Ajouter une Élection</a></li>
+                            <li><a class="dropdown-item" href="{% url 'add_candidate' %}">Ajouter un Candidat</a></li>
+                            <li><a class="dropdown-item" href="{% url 'add_conflict_of_interest' %}">Ajouter un Conflit d'Intérêt</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/admin/">Administration</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% if not user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Connexion</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">Déconnexion</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main container -->
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'info' %}alert-info{% elif message.tags == 'warning' %}alert-warning{% else %}alert-secondary{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Footpage -->
+    <footer class="bg-light text-center text-lg-start mt-5 py-3">
+        <div class="container">
+            <p class="text-muted mb-0">© 2026 Consensio - v{{ APP_VERSION }} - CNRS</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Local JS -->
+    <script src="/static/js/script.js"></script>
+
+</body>
+
+
+
+</html>

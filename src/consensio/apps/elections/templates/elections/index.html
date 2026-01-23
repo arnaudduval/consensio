@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Élections en cours</h1>
+
+    {% if open_elections %}
+    <div class="row">
+        {% for election in open_elections %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ election.title }}</h5>
+                    <p class="card-text">{{ election.description|truncatechars:100 }}</p>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}
+                        </small>
+                    </p>
+                    <a href="{% url 'detail_election' election.id %}" class="btn btn-info">Détails</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Aucune élection en cours.</p>
+    {% endif %}
+
+    <h1 class="mb-4 mt-5">Élections terminées</h1>
+
+    {% if closed_elections %}
+    <div class="row">
+        {% for election in closed_elections %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ election.title }}</h5>
+                    <p class="card-text">{{ election.description|truncatechars:100 }}</p>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}
+                            {% if election.is_closed %}
+                            <br><span class="badge bg-danger">Fermée le {{ election.closed_at|date:"d/m/Y H:i" }}</span>
+                            {% endif %}
+                        </small>
+                    </p>
+                    <a href="{% url 'detail_election' election.id %}" class="btn btn-info">Détails</a>
+                    <a href="{% url 'results_election' election.id %}" class="btn btn-primary">Voir les résultats</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Aucune élection terminée.</p>
+    {% endif %}
+</div>
+{% endblock %}

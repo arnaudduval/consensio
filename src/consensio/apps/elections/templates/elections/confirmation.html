@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-success">
+                <div class="card-header bg-success text-white text-center py-3">
+                    <h3 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Confirmation de vote</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="confirmation-icon mb-3">
+                            <i class="bi bi-balloon-heart-fill text-success" style="font-size: 3rem;"></i>
+                        </div>
+                        <div class="alert alert-success">
+                            Votre vote a été enregistré avec succès !
+                        </div>
+                    </div>
+
+                    <div class="vote-info bg-light p-4 rounded mb-4">
+                        <p class="mb-3">
+                            <strong>Votre jeton de vote :</strong>
+                            <span class="badge bg-primary ms-2">{{ token }}</span>
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Vous pouvez vérifier votre bulletin de vote à tout moment en utilisant ce jeton.
+                        </p>
+                    </div>
+
+                    <h4 class="mb-3">Vos votes :</h4>
+                    <div class="vote-results">
+                        <div class="list-group">
+                            {% for vote in votes %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{{ vote.candidate }}</span>
+                                <span class="badge
+                                    {% if vote.note == 'E' %}bg-success
+                                    {% elif vote.note == 'TB' %}bg-primary
+                                    {% elif vote.note == 'B' %}bg-info
+                                    {% elif vote.note == 'P' %}bg-warning
+                                    {% else %}bg-danger{% endif %}
+                                    rounded-pill">
+                                    {{ vote.get_note_display }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'index' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-house-door-fill me-2"></i>Retour à la liste des élections
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .confirmation-icon {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .vote-info {
+        border-left: 4px solid #0d6efd;
+    }
+
+    .list-group-item {
+        border-left: none;
+        border-right: none;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .btn-outline-primary {
+        transition: all 0.2s;
+    }
+
+    .btn-outline-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
