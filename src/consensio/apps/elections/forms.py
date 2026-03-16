@@ -57,7 +57,7 @@ class AddElectorToGroupForm(forms.Form):
         label="Électeurs à ajouter",
     )
 
-class CSVImportForm(forms.Form):
+class CSVImportElectorForm(forms.Form):
     csv_file = forms.FileField(label="Fichier CSV", help_text="Sélectionner un fichier CSV contenant les électeurs")
     group_choice = forms.ChoiceField(
         label="Ajouter les électeurs à",
@@ -91,3 +91,18 @@ class CSVImportForm(forms.Form):
             self.add_error('existing_group', "Veuillez sélectionner un groupe existant.")
 
         return cleaned_data
+
+
+class CSVImportCandidateForm(forms.Form):
+    csv_file = forms.FileField(label="FichierCSV", help_text="Sélectionnez un fichier CSV contenant les candidats.")
+    election = forms.ModelChoiceField(
+        label="Élection",
+        queryset=Election.objects.filter(is_closed=False, invitations_sent_at__isnull=True),
+        empty_label="Sélectionnez une élection"
+    )
+
+    def clean_election(self):
+        election = self.cleaned_data.get('election')
+        if election and (election.is_closed or election.invitations_sent_at is not None):
+            raise forms.ValidationError("Vous ne pouvez pas ajouter de candidats à une élection fermée ou pour laquelle les invitations ont déjà été envoyées.")
+        return election

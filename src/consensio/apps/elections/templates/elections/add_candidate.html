@@ -2,19 +2,74 @@
 
 {% block content %}
 <h1>Ajouter un candidat</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    {% for field in form %}
-        <div class="mb-3">
-            {{ field.label_tag }}
-            {{ field }}
-            {{ field.errors }}
-            {% if field.help_text %}
-                <small class="form-text text-muted">{{ field.help_text }}</small>
-            {% endif %}
+
+<!-- Section pour ajouter un candidat manuellement -->
+<div class="card mb-4">
+    <div class="card-header">
+        Ajouter un candidat manuellement
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="add_single_candidate" value="1">
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Section pour importer des candidats via CSV -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Importer des candidats via un fichier CSV
+        <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#csvHelp">
+            Aide sur le format CSV
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="collapse mb-3" id="csvHelp">
+            <div class="alert alert-info">
+                <h5>Format attendu pour le fichier CSV :</h5>
+                <ul>
+                    <li>Le fichier doit être au format <strong>CSV</strong> avec un <strong>délimiteur point-virgule ( ; )</strong>.</li>
+                    <li>La première ligne du fichier est ignorée (en-tête).</li>
+                    <li>Chaque ligne doit contenir <strong>une colonne</strong> :
+                        <ul>
+                            <li><strong>Nom du candidat</strong> (ex: "Jean Dupont")</li>
+                        </ul>
+                    </li>
+                    <li>Exemple de ligne : <code>Jean Dupont</code></li>
+                </ul>
+            </div>
         </div>
-    {% endfor %}
-    <button type="submit" class="btn btn-primary">Ajouter</button>
-</form>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="import_csv" value="1">
+            <div class="mb-3">
+                <label for="{{ csv_form.election.id_for_label }}" class="form-label">Élection</label>
+                {{ csv_form.election }}
+                <div class="form-text">Sélectionnez l'élection à laquelle ajouter les candidats.</div>
+            </div>
+            <div class="mb-3">
+                <label for="{{ csv_form.csv_file.id_for_label }}" class="form-label">Fichier CSV</label>
+                {{ csv_form.csv_file }}
+                <div class="form-text">Sélectionnez un fichier CSV contenant les candidats.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Importer</button>
+        </form>
+    </div>
+</div>
+
+<!-- Affichage des messages -->
+{% if messages %}
+    <div class="mt-4">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
 {% endblock %}

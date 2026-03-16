@@ -11,9 +11,9 @@ from collections import defaultdict
 import statistics
 import csv
 import io
-from .models import Election, Elector, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership
+from .models import Election, Elector, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership, Candidate
 from .services import generate_ballot_paper, register_votes
-from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm, CSVImportForm
+from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm, CSVImportElectorForm, CSVImportCandidateForm
 from .decorators import admin_required
 from .services import generate_tokens_for_election
 
@@ -105,7 +105,7 @@ def confirmation_vote(request, token):
 def add_elector(request):
     # Initialize forms
     form  = ElectorForm(prefix='single')
-    csv_form = CSVImportForm(prefix='csv')
+    csv_form = CSVImportElectorForm(prefix='csv')
 
     if request.method == 'POST':
         # Manually add an elector
@@ -118,7 +118,7 @@ def add_elector(request):
 
         # CSV import
         elif 'import_csv' in request.POST:
-            csv_form = CSVImportForm(request.POST, request.FILES, prefix='csv')
+            csv_form = CSVImportElectorForm(request.POST, request.FILES, prefix='csv')
             if csv_form.is_valid():
                 csv_file = csv_form.cleaned_data['csv_file']
                 group_choice = csv_form.cleaned_data['group_choice']
@@ -202,16 +202,66 @@ def add_election(request):
 @login_required
 @user_passes_test(is_staff)
 def add_candidate(request):
-    if request.method == 'POST':
-        form = CandidateForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Le candidat a été ajouté avec succès !")
-            return redirect('add_candidate')
-    else:
-        form = CandidateForm()
+    # Initialize forms
+    form = CandidateForm()
+    csv_form = CSVImportCandidateForm()
 
-    return render(request, 'elections/add_candidate.html', {'form': form})
+    if request.method == 'POST':
+        # Manuelly add a candidate
+        if 'add_single_candidate' in request.POST:
+            form = CandidateForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Le candidat a été ajouté avec succès !")
+                return redirect('add_candidate')
+
+        # CSV import
+        else:
+            csv_form = CSVImportCandidateForm(request.POST, request.FILES)
+            if csv_form.is_valid():
+                csv_file = csv_form.cleaned_data['csv_file']
+                election = csv_form.cleaned_data['election']
+
+                try:
+                    csv_data = csv_file.read().decode('utf-8')
+                    csv_reader = csv.reader(io.StringIO(csv_data), delimiter=';')
+
+                    # Ignore fisrt line (header)
+                    next(csv_reader, None)
+
+                    added_count = 0
+                    duplicate_count = 0
+                    error_count = 0
+
+                    for row in csv_reader:
+                        if len(row) < 1:
+                            error_count += 1
+                            continue
+
+                        name = row[0].strip()
+
+                        # Verify if candidate already exists
+                        if Candidate.objects.filter(name=name, election=election).exists():
+                            duplicate_count += 1
+                            continue
+
+                        # Add candidate
+                        Candidate.objects.create(name=name, election=election)
+                        added_count += 1
+
+                    messages.success(request, f"{added_count} nouveaux candidats ajoutés avec succès.")
+
+                    if duplicate_count > 0:
+                        messages.warning(request, f"{duplicate_count} candidats étaient déjà présents pour cette élection et n'ont pas été ajoutés.")
+                    if error_count > 0:
+                        messages.error(request, f"{error_count} ligens du fichier CSV étaient invalides et ont été ignorées.")
+
+                except Exception as e:
+                    messages.error(request, f"Erreur lors de la lecture du fichier CSV : {str(e)}")
+                return redirect("add_candidate")
+
+    return render(request, 'elections/add_candidate.html',
+                  {'form': form, 'csv_form': csv_form})
 
 @login_required
 @user_passes_test(is_staff)
