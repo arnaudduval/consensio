@@ -9,9 +9,11 @@ from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
 from collections import defaultdict
 import statistics
-from .models import Election, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership
+import csv
+import io
+from .models import Election, Elector, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership
 from .services import generate_ballot_paper, register_votes
-from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm
+from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm, CSVImportForm
 from .decorators import admin_required
 from .services import generate_tokens_for_election
 
@@ -101,17 +103,85 @@ def confirmation_vote(request, token):
 @login_required
 @user_passes_test(is_staff)
 def add_elector(request):
-    if request.method == 'POST':
-        form = ElectorForm(request.POST)
-        if form.is_valid():
-            electeur = form.save()
-            print(electeur)
-            messages.success(request, "L'électeur a été ajouté avec succès !")
-            return redirect('add_elector')
-    else:
-        form  = ElectorForm()
+    # Initialize forms
+    form  = ElectorForm(prefix='single')
+    csv_form = CSVImportForm(prefix='csv')
 
-    return render(request, 'elections/add_elector.html', {'form': form})
+    if request.method == 'POST':
+        # Manually add an elector
+        if 'add_single_elector' in request.POST:
+            form = ElectorForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "L'électeur a été ajouté avec succès !")
+                return redirect('add_elector')
+
+        # CSV import
+        elif 'import_csv' in request.POST:
+            csv_form = CSVImportForm(request.POST, request.FILES, prefix='csv')
+            if csv_form.is_valid():
+                csv_file = csv_form.cleaned_data['csv_file']
+                group_choice = csv_form.cleaned_data['group_choice']
+                new_group_name = csv_form.cleaned_data['new_group_name']
+                existing_group = csv_form.cleaned_data['existing_group']
+
+                # Set target group
+                if group_choice == 'new':
+                    group, created = ElectorGroup.objects.get_or_create(name=new_group_name)
+                    if created:
+                        messages.info(request, f"Le groupe {new_group_name} a été créé.")
+                else:
+                    group = existing_group
+
+                # Read CSV file
+                try:
+                    csv_data = csv_file.read().decode('utf-8')
+                    csv_reader = csv.reader(io.StringIO(csv_data), delimiter=';')
+                    # Ignore first line (header)
+                    next(csv_reader, None)
+                    added_count = 0
+                    duplicate_count = 0
+                    error_count = 0
+
+                    for row in csv_reader:
+                        if len(row) < 2:
+                            error_count += 1
+                            continue
+
+                        name, email = row[0].strip(), row[1].strip().lower()
+
+                        # Verify if elector already exists
+                        elector, created = Elector.objects.get_or_create(email=email, defaults={'name': name})
+
+                        if created:
+                            added_count += 1
+                        else:
+                            duplicate_count += 1
+                            if elector.name != name:
+                                elector.name = name
+                                elector.save()
+
+                        # Add elector to group
+                        ElectorGroupMembership.objects.get_or_create(elector=elector, group=group)
+
+                    messages.success(request, f"{added_count} nouveaux électeurs ajoutés avec succès.")
+
+                    if duplicate_count > 0:
+                        messages.warning(request, f"{duplicate_count} électeurs étaient déjà présents dans la base de données. Ils ont été ajoutés au groupe.")
+                    if error_count > 0:
+                        messages.error(request), f"{error_count} lignes du fichier CSV étaient invalides et ont été ignorées."
+                except Exception as e:
+                    messages.error(request, f"Erreur lors de la lecture du fichier CSV : {str(e)}")
+
+                return redirect('add_elector')
+
+
+            else:
+                messages.error(request, "Erreur dans le formulaire d'importation CSV.")
+
+
+    return render(request, 'elections/add_elector.html',
+                  {'form': form, 'csv_form': csv_form})
 
 @login_required
 @user_passes_test(is_staff)

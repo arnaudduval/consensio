@@ -43,3 +43,38 @@ class AddElectorToGroupForm(forms.Form):
         widget=forms.SelectMultiple(attrs={'class': 'form-select'}),
         label="Électeurs à ajouter",
     )
+
+class CSVImportForm(forms.Form):
+    csv_file = forms.FileField(label="Fichier CSV", help_text="Sélectionner un fichier CSV contenant les électeurs")
+    group_choice = forms.ChoiceField(
+        label="Ajouter les électeurs à",
+        choices=[
+            ('new', 'Un Nouveau groupe (spécifier le nom ci-dessous)'),
+            ('existing', 'Un groupe existant'),
+        ],
+        widget=forms.RadioSelect,
+        initial="new"
+    )
+    new_group_name = forms.CharField(
+        label="Nom du nouveau groupe",
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Nom du groupe'})
+    )
+    existing_group = forms.ModelChoiceField(
+        label="Groupe existant",
+        queryset=ElectorGroup.objects.all(),
+        required=False
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        group_choice = cleaned_data.get('group_choice')
+        new_group_name = cleaned_data.get('new_group_name')
+        existing_group = cleaned_data.get('existing_group')
+
+        if group_choice == 'new' and not new_group_name:
+            self.add_error('new_group_name', "Veuillez spécifier un nom pour le nouveau groupe")
+        elif group_choice == 'existing' and not existing_group:
+            self.add_error('existing_group', "Veuillez sélectionner un groupe existant.")
+
+        return cleaned_data

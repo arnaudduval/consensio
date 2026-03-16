@@ -2,9 +2,110 @@
 
 {% block content %}
 <h1>Ajouter un électeur</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Ajouter</button>
-</form>
+
+<!-- Section pour ajouter un électeur manuellement -->
+<div class="card mb-4">
+    <div class="card-header">
+        Ajouter un électeur manuellement
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="add_single_elector" value="1">
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Section pour importer des électeurs via CSV -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Importer des électeurs via un fichier CSV
+        <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#csvHelp">
+            Aide sur le format CSV
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="collapse mb-3" id="csvHelp">
+            <div class="alert alert-info">
+                <h5>Format attendu pour le fichier CSV :</h5>
+                <ul>
+                    <li>Le fichier doit être au format <strong>CSV</strong> avec un <strong>délimiteur point-virgule ( ; )</strong>.</li>
+                    <li>La première ligne du fichier est ignorée (en-tête).</li>
+                    <li>Chaque ligne doit contenir <strong>deux colonnes</strong> :
+                        <ul>
+                            <li><strong>Nom de l'électeur</strong> (ex: "Jean Dupont")</li>
+                            <li><strong>Email de l'électeur</strong> (ex: "jean.dupont@example.com")</li>
+                        </ul>
+                    </li>
+                    <li>Exemple de ligne : <code>Jean Dupont;jean.dupont@example.com</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="import_csv" value="1">
+
+            <div class="mb-3">
+                <label for="{{ csv_form.csv_file.id_for_label }}" class="form-label">Fichier CSV</label>
+                {{ csv_form.csv_file }}
+                <div class="form-text">Sélectionnez un fichier CSV contenant les électeurs.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Ajouter les électeurs à :</label>
+                <div class="form-check">
+                    {{ csv_form.group_choice }}
+                </div>
+            </div>
+
+            <div class="mb-3" id="newGroupNameContainer" style="display: none;">
+                <label for="{{ csv_form.new_group_name.id_for_label }}" class="form-label">Nom du nouveau groupe</label>
+                {{ csv_form.new_group_name }}
+            </div>
+
+            <div class="mb-3" id="existingGroupContainer" style="display: none;">
+                <label for="{{ csv_form.existing_group.id_for_label }}" class="form-label">Groupe existant</label>
+                {{ csv_form.existing_group }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Importer</button>
+        </form>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion de l'affichage des champs en fonction du choix de groupe
+        const groupChoiceRadios = document.querySelectorAll('input[name="csv-group_choice"]');
+        const newGroupNameContainer = document.getElementById('newGroupNameContainer');
+        const existingGroupContainer = document.getElementById('existingGroupContainer');
+
+        if (groupChoiceRadios.length > 0) {
+            groupChoiceRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'new') {
+                        newGroupNameContainer.style.display = 'block';
+                        existingGroupContainer.style.display = 'none';
+                    } else {
+                        newGroupNameContainer.style.display = 'none';
+                        existingGroupContainer.style.display = 'block';
+                    }
+                });
+            });
+
+            const defaultChoice = document.querySelector('input[name="csv-group_choice"]:checked');
+            if (defaultChoice) {
+                if (defaultChoice.value === 'new') {
+                    newGroupNameContainer.style.display = 'block';
+                } else {
+                    existingGroupContainer.style.display = 'block';
+                }
+            }
+        }
+    });
+</script>
 {% endblock %}

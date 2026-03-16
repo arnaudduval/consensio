@@ -1,10 +1,15 @@
 from django.contrib import admin
-from .models import Elector, Election, Candidate, ConflictOfInterest, Vote
+from .models import Elector, Election, Candidate, ConflictOfInterest, Vote, ElectorGroup
 
 @admin.register(Elector)
 class ElectorAdmin(admin.ModelAdmin):
     list_display = ('name', 'email')
     search_fields = ('name', 'email')
+
+@admin.register(ElectorGroup)
+class ElectorGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name', 'descriptionl')
 
 @admin.register(Election)
 class ElectionAdmin(admin.ModelAdmin):
