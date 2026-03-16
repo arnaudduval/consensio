@@ -19,6 +19,11 @@ Complete list `ALLOWED_HOST` by teh hots URL you want to allow
 
 `python3 -m venv .venv`
 
+### Move static files
+
+Once virtual environment is activated, run :
+`python manage.py collectstatic`
+
 ### Create a superuser
 
 `python manage.py createsuperuser`
