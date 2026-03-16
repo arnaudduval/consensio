@@ -9,16 +9,14 @@
     <div class="mt-4">
         <div class="d-flex justify-content-between align-items-center">
             <h3>Électeurs</h3>
-            <!-- MODIF : Ajout de l'icône crayon pour afficher le formulaire -->
-            {% if request.user.is_staff and not election.is_closed and not election.invitations_sent_at %}
+            {% if not election.is_closed and not election.invitations_sent_at %}
                 <button id="toggleAddElectorForm" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-pencil"></i> Ajouter un électeur
                 </button>
             {% endif %}
         </div>
 
-        <!-- MODIF : Section pour ajouter un électeur, masquée par défaut -->
-        {% if request.user.is_staff and not election.is_closed and not election.invitations_sent_at %}
+        {% if not election.is_closed and not election.invitations_sent_at %}
         <div id="addElectorFormContainer" class="card mb-4 mt-2" style="display: none;">
             <div class="card-body">
                 <form method="post">
@@ -34,7 +32,6 @@
             </div>
         </div>
         {% endif %}
-        <!-- FIN MODIF -->
 
         <ul>
             {% for elector in election.electors.all %}
@@ -54,7 +51,11 @@
 
     {% load custom_filters %}
     <div class="mt-4">
-        <h3>Conflits d'intérêt</h3>
+        <h3>Conflits d'intérêt
+            {% if request.user.is_staff and not election.is_closed and not election.invitations_sent_at %}
+            <small class="text-muted">(Cliquez sur une case pour ajouter/supprimer un conflit d'intérêt)</small>
+            {% endif %}
+        </h3>
         <div class="table-responsive" style="overflow-x: auto; max-width: 100%;">
             <table class="table table-bordered" style="width: auto; table-layout: fixed;">
                 <thead>
@@ -73,9 +74,19 @@
                             <td style="width: auto; min-width: 150px;">{{ elector.name }}</td>
                             {% for candidate in election.candidates.all %}
                                 {% if conflicts_matrix|get_item:elector.id|get_item:candidate.id %}
-                                    <td class="text-center bg-danger" style="width: 50px; height: 50px;"></td>
+                                    <td class="text-center conflict-cell bg-danger"
+                                        data-elector-id="{{ elector.id }}"
+                                        data-candidate-id="{{ candidate.id }}"
+                                        data-has-conflict="true"
+                                        style="width: 50px; height: 50px; cursor: pointer;">
+                                    </td>
                                 {% else %}
-                                    <td class="text-center bg-success" style="width: 50px; height: 50px;"></td>
+                                    <td class="text-center conflict-cell bg-success"
+                                        data-elector-id="{{ elector.id }}"
+                                        data-candidate-id="{{ candidate.id }}"
+                                        data-has-conflict="false"
+                                        style="width: 50px; height: 50px; cursor: pointer;">
+                                    </td>
                                 {% endif %}
                             {% endfor %}
                         </tr>
@@ -106,9 +117,9 @@
     </div>
 </div>
 
-<!-- MODIF : Ajout du script pour gérer l'affichage du formulaire -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Gestion de l'affichage du formulaire d'ajout d'électeur
         const toggleButton = document.getElementById('toggleAddElectorForm');
         const formContainer = document.getElementById('addElectorFormContainer');
 
@@ -121,7 +132,46 @@
                 }
             });
         }
+
+        // Gestion des conflits d'intérêt
+        const conflictCells = document.querySelectorAll('.conflict-cell');
+        conflictCells.forEach(cell => {
+            cell.addEventListener('click', function() {
+                const electorId = this.getAttribute('data-elector-id');
+                const candidateId = this.getAttribute('data-candidate-id');
+                const hasConflict = this.getAttribute('data-has-conflict') === 'true';
+
+                fetch(`{% url 'toggle_conflict_of_interest' election.id %}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: `elector_id=${electorId}&candidate_id=${candidateId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour l'affichage de la cellule
+                        if (hasConflict) {
+                            this.classList.remove('bg-danger');
+                            this.classList.add('bg-success');
+                            this.setAttribute('data-has-conflict', 'false');
+                        } else {
+                            this.classList.remove('bg-success');
+                            this.classList.add('bg-danger');
+                            this.setAttribute('data-has-conflict', 'true');
+                        }
+                    } else {
+                        alert(`Erreur : ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue lors de la mise à jour du conflit d\'intérêt.');
+                });
+            });
+        });
     });
 </script>
-<!-- FIN MODIF -->
 {% endblock %}

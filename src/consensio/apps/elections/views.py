@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import models
+from django.http import JsonResponse
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
@@ -354,6 +356,7 @@ def resolve_tie_recursive(tie_group, vote_details, candidates_dict, depth=0):
     # Sinon, les candidats sont départagés par leur mention majoritaire
     resolution = {}
     rank = 0
+    print(f"{mention_groups = }")
     for mention in sorted(mention_groups.keys(), key=lambda x: {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}[x]):
         for candidate_id in mention_groups[mention]:
             resolution[candidate_id] = rank
@@ -550,6 +553,33 @@ def public_detail_election(request, election_id):
         'conflicts_matrix': conflicts_matrix
     })
 
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def toggle_conflict_of_interest(request, election_id):
+    elector_id = request.POST.get('elector_id')
+    candidate_id = request.POST.get('candidate_id')
+
+    if not elector_id or not candidate_id:
+        return JsonResponse({'success': False, 'error': 'Missing parameters'}, status=400)
+
+    election = get_object_or_404(Election, id=election_id)
+
+    if election.invitations_sent_at is not None:
+        return JsonResponse({'success': False, 'error': 'Les invitations ont déjà été envoyées'}, status=400)
+
+    elector = get_object_or_404(Elector, id=elector_id)
+    candidate = get_object_or_404(Candidate, id=candidate_id, election=election)
+
+    conflict, created = ConflictOfInterest.objects.get_or_create(elector=elector, candidate=candidate)
+
+    if not created:
+        conflict.delete()
+        action = 'supprimé'
+    else:
+        action = 'ajouté'
+
+    return JsonResponse({'success': True, 'action': action})
 
 @login_required
 @user_passes_test(is_staff)
