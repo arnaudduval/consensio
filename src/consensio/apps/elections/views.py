@@ -13,7 +13,7 @@ import csv
 import io
 from .models import Election, Elector, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership, Candidate
 from .services import generate_ballot_paper, register_votes
-from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm, CSVImportElectorForm, CSVImportCandidateForm
+from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm, CSVImportElectorForm, CSVImportCandidateForm, AddElectorForm
 from .decorators import admin_required
 from .services import generate_tokens_for_election
 
@@ -511,7 +511,41 @@ def detail_election(request, election_id):
         for candidate in election.candidates.all():
             conflicts_matrix[elector.id][candidate.id] = conflicts.filter(elector=elector, candidate=candidate).exists()
 
-    return render(request, 'elections/detail_election.html', {'election': election, 'conflicts_matrix': conflicts_matrix})
+    # Add an elector to election
+    if request.method == 'POST' and 'add_elector' in request.POST:
+        form = AddElectorForm(request.POST, election=election)
+        if form.is_valid():
+            elector = form.cleaned_data.get('elector')
+            if elector not in election.electors.all():
+                election.electors.add(elector)
+                messages.success(request, f"L'électeur {elector.name} a été ajouté avec succès à l'élection.")
+            else:
+                messages.warning(request, f"L'électeur {elector.name} est déjà dans cette élection.")
+            return redirect('detail_election', election_id=election.id)
+    else:
+        form = AddElectorForm(election=election)
+
+
+    return render(request, 'elections/detail_election.html',{
+        'election': election,
+        'conflicts_matrix': conflicts_matrix,
+        'form': form})
+
+
+### Ancienne version avant de permettre les modifications par le staff
+# def detail_election(request, election_id):
+#     if not request.user.is_staff:
+#         return redirect('public_detail_election', election_id=election_id)
+#     election = get_object_or_404(Election, id=election_id)
+#     conflicts = ConflictOfInterest.objects.filter(candidate__election=election)
+
+#     conflicts_matrix = {}
+#     for elector in election.electors.all():
+#         conflicts_matrix[elector.id] = {}
+#         for candidate in election.candidates.all():
+#             conflicts_matrix[elector.id][candidate.id] = conflicts.filter(elector=elector, candidate=candidate).exists()
+
+#     return render(request, 'elections/detail_election.html', {'election': election, 'conflicts_matrix': conflicts_matrix})
 
 def public_detail_election(request, election_id):
     election = get_object_or_404(Election, id=election_id)

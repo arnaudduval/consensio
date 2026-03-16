@@ -106,3 +106,18 @@ class CSVImportCandidateForm(forms.Form):
         if election and (election.is_closed or election.invitations_sent_at is not None):
             raise forms.ValidationError("Vous ne pouvez pas ajouter de candidats à une élection fermée ou pour laquelle les invitations ont déjà été envoyées.")
         return election
+
+class AddElectorForm(forms.Form):
+    # Form used to add an elector to an already existing election
+    elector = forms.ModelChoiceField(
+        label="Électeur",
+        queryset=Elector.objects.none(),      # Will be filled in __init__
+        empty_label="Sélectionnez un électeur"
+    )
+
+    def __init__(self, *args, election=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if election:
+            # Exclude electors already in election
+            current_electors = election.electors.all()
+            self.fields['elector'].queryset = Elector.objects.exclude(id__in=current_electors)

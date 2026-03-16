@@ -7,7 +7,35 @@
     <p><small class="text-muted">Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}</small></p>
 
     <div class="mt-4">
-        <h3>Électeurs</h3>
+        <div class="d-flex justify-content-between align-items-center">
+            <h3>Électeurs</h3>
+            <!-- MODIF : Ajout de l'icône crayon pour afficher le formulaire -->
+            {% if request.user.is_staff and not election.is_closed and not election.invitations_sent_at %}
+                <button id="toggleAddElectorForm" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-pencil"></i> Ajouter un électeur
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- MODIF : Section pour ajouter un électeur, masquée par défaut -->
+        {% if request.user.is_staff and not election.is_closed and not election.invitations_sent_at %}
+        <div id="addElectorFormContainer" class="card mb-4 mt-2" style="display: none;">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_elector" value="1">
+                    <div class="mb-3">
+                        <label for="{{ form.elector.id_for_label }}" class="form-label">Électeur</label>
+                        {{ form.elector }}
+                        <div class="form-text">Sélectionnez un électeur à ajouter à cette élection.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Ajouter</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        <!-- FIN MODIF -->
+
         <ul>
             {% for elector in election.electors.all %}
                 <li>{{ elector.name }} ({{ elector.email }})</li>
@@ -27,7 +55,7 @@
     {% load custom_filters %}
     <div class="mt-4">
         <h3>Conflits d'intérêt</h3>
-        <div class="table-responsive"  style="overflow-x: auto; max-width: 100%;">
+        <div class="table-responsive" style="overflow-x: auto; max-width: 100%;">
             <table class="table table-bordered" style="width: auto; table-layout: fixed;">
                 <thead>
                     <tr>
@@ -77,4 +105,23 @@
         {% endif %}
     </div>
 </div>
+
+<!-- MODIF : Ajout du script pour gérer l'affichage du formulaire -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleButton = document.getElementById('toggleAddElectorForm');
+        const formContainer = document.getElementById('addElectorFormContainer');
+
+        if (toggleButton && formContainer) {
+            toggleButton.addEventListener('click', function() {
+                if (formContainer.style.display === 'none') {
+                    formContainer.style.display = 'block';
+                } else {
+                    formContainer.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
+<!-- FIN MODIF -->
 {% endblock %}
