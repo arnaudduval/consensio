@@ -532,21 +532,6 @@ def detail_election(request, election_id):
         'form': form})
 
 
-### Ancienne version avant de permettre les modifications par le staff
-# def detail_election(request, election_id):
-#     if not request.user.is_staff:
-#         return redirect('public_detail_election', election_id=election_id)
-#     election = get_object_or_404(Election, id=election_id)
-#     conflicts = ConflictOfInterest.objects.filter(candidate__election=election)
-
-#     conflicts_matrix = {}
-#     for elector in election.electors.all():
-#         conflicts_matrix[elector.id] = {}
-#         for candidate in election.candidates.all():
-#             conflicts_matrix[elector.id][candidate.id] = conflicts.filter(elector=elector, candidate=candidate).exists()
-
-#     return render(request, 'elections/detail_election.html', {'election': election, 'conflicts_matrix': conflicts_matrix})
-
 def public_detail_election(request, election_id):
     election = get_object_or_404(Election, id=election_id)
     conflicts = ConflictOfInterest.objects.filter(candidate__election=election)
