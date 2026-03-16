@@ -186,7 +186,7 @@ def add_elector(request):
 @login_required
 @user_passes_test(is_staff)
 def add_election(request):
-    elector_groups = ElectorGroup.objects.all()
+    elector_groups = ElectorGroup.objects.prefetch_related('electorgroupmembership_set__elector').all()
 
     if request.method == 'POST':
         form = ElectionForm(request.POST)
