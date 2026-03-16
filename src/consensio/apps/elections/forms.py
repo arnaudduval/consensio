@@ -1,5 +1,7 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from .models import Elector, Election, Candidate, ConflictOfInterest, ElectorGroup
+
 
 class ElectorForm(forms.ModelForm):
     class Meta:
@@ -21,6 +23,17 @@ class CandidateForm(forms.ModelForm):
     class Meta:
         model = Candidate
         fields = ['name', 'election']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter available elections
+        self.fields['election'].queryset = Election.objects.filter(is_closed=False, invitations_sent_at__isnull=True)
+
+    def clean_election(self):
+        election = self.cleaned_data.get('election')
+        if election and (election.is_closed or election.invitations_sent_at is not None):
+            raise ValidationError("Vous ne pouvez pas ajouter de candidat à une élection fermée ou pour laquelle les invitations ont déjà été envoyées.")
+        return election
 
 class ConflictOfInterestForm(forms.ModelForm):
     class Meta:

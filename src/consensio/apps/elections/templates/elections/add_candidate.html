@@ -1,9 +1,20 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<h1>Ajouter un candidat</h1>
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Ajouter</button>
+    {{ form.non_field_errors }}
+    {% for field in form %}
+        <div class="mb-3">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+            {% if field.help_text %}
+                <small class="form-text text-muted">{{ field.help_text }}</small>
+            {% endif %}
+        </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Ajouter</button>
 </form>
 {% endblock %}
