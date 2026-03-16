@@ -9,9 +9,9 @@ from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
 from collections import defaultdict
 import statistics
-from .models import Election, Vote, Invitation, ConflictOfInterest, ElectorGroup
+from .models import Election, Vote, Invitation, ConflictOfInterest, ElectorGroup, ElectorGroupMembership
 from .services import generate_ballot_paper, register_votes
-from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm
+from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm, ElectorGroupForm, AddElectorToGroupForm
 from .decorators import admin_required
 from .services import generate_tokens_for_election
 
@@ -425,3 +425,42 @@ def close_election(request, election_id):
     messages.success(request, f"L'élection '{election.title}' a été fermée avec succès.")
     return redirect('detail_election', election_id=election.id)
 
+
+@login_required
+@user_passes_test(is_staff)
+def manage_groups(request):
+    # Create a group
+    if request.method == 'POST' and 'create_group' in request.POST:
+        group_form =ElectorGroupForm(request.POST)
+        if group_form.is_valid():
+            group_form.save()
+            messages.success(request, "Le groupe a été créé avec succès !")
+            return redirect('manage_groups')
+
+    # Add electors to a group
+    elif request.method == 'POST' and 'add_electors_to_group' in request.POST:
+        add_form = AddElectorToGroupForm(request.POST)
+        if add_form.is_valid():
+            group = add_form.cleaned_data['group']
+            electors = add_form.cleaned_data['electors']
+            print('group', group)
+            print('electors', electors)
+
+            for elector in electors:
+                # Verify if elector is not already in the group
+                if not ElectorGroupMembership.objects.filter(elector=elector, group=group).exists():
+                    ElectorGroupMembership.objects.create(elector=elector, group=group)
+            messages.success(request, f"Les électeurs ont été ajoutés au groupe {group.name} avec succès !")
+            return redirect('manage_groups')
+    else:
+        group_form = ElectorGroupForm()
+        add_form = AddElectorToGroupForm()
+
+    # Get all groups and their electors
+    groups = ElectorGroup.objects.prefetch_related('electorgroupmembership_set').all()
+
+    return render(request, 'elections/manage_groups.html', {
+        'group_form': group_form,
+        'add_form': add_form,
+        'groups': groups,
+    })

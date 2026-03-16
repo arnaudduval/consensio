@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<h1>Gestion des groupes d'électeurs</h1>
+
+<!-- Section pour créer un groupe -->
+<div class="card mb-4">
+    <div class="card-header">
+        Créer un nouveau groupe
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="create_group" value="1">
+            <div class="mb-3">
+                <label for="{{ group_form.name.id_for_label }}" class="form-label">Nom du groupe</label>
+                {% render_field group_form.name class="form-control" %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ group_form.description.id_for_label }}" class="form-label">Description</label>
+                {% render_field group_form.description class="form-control" %}
+            </div>
+            <button type="submit" class="btn btn-primary">Créer le groupe</button>
+        </form>
+    </div>
+</div>
+
+<!-- Section pour ajouter des électeurs à un groupe -->
+<div class="card mb-4">
+    <div class="card-header">
+        Ajouter des électeurs à un groupe
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="add_electors_to_group" value="1">
+            <div class="mb-3">
+                <label for="{{ add_form.group.id_for_label }}" class="form-label">Groupe</label>
+                {% render_field add_form.group class="form-select" %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ add_form.electors.id_for_label }}" class="form-label">Électeurs</label>
+                {% render_field add_form.electors class="form-select" %}
+            </div>
+            <button type="submit" class="btn btn-primary">Ajouter les électeurs au groupe</button>
+        </form>
+    </div>
+</div>
+
+<!-- Section pour afficher les groupes existants -->
+<div class="card">
+    <div class="card-header">
+        Groupes existants
+    </div>
+    <div class="card-body">
+        {% if groups %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nom du groupe</th>
+                            <th>Description</th>
+                            <th>Nombre d'électeurs</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                            <tr>
+                                <td>{{ group.name }}</td>
+                                <td>{{ group.description|default:"-" }}</td>
+                                <td>{{ group.electorgroupmembership_set.count }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary toggle-members"
+                                            data-group-id="{{ group.id }}">
+                                        {% if group.electorgroupmembership_set.count > 0 %}
+                                            Voir les membres
+                                        {% else %}
+                                            Aucun membre
+                                        {% endif %}
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- Ligne masquée pour les membres du groupe -->
+                            <tr class="group-members" id="members-{{ group.id }}" style="display: none;">
+                                <td colspan="4">
+                                    <div class="p-3 bg-light">
+                                        <h6>Membres du groupe "{{ group.name }}" :</h6>
+                                        <ul>
+                                            {% for membership in group.electorgroupmembership_set.all %}
+                                                <li>{{ membership.elector.name }} ({{ membership.elector.email }})</li>
+                                            {% empty %}
+                                                <li>Aucun membre dans ce groupe.</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>Aucun groupe n'a encore été créé.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion du dépliement des membres des groupes
+        const toggleButtons = document.querySelectorAll('.toggle-members');
+
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                const membersRow = document.getElementById(`members-${groupId}`);
+
+                if (membersRow.style.display === 'none') {
+                    membersRow.style.display = 'table-row';
+                    this.textContent = 'Masquer les membres';
+                } else {
+                    membersRow.style.display = 'none';
+                    this.textContent = 'Voir les membres';
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}

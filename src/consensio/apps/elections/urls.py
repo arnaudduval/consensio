@@ -14,5 +14,6 @@ urlpatterns = [
     path('elections/<int:election_id>/public/', views.public_detail_election, name='public_detail_election'),
     path('elections/<int:election_id>/send-invitations/', views.send_invitations, name='send_invitations'),
     path('elections/<int:election_id>/close/', views.close_election, name='close_election'),
+    path('manage-groups/', views.manage_groups, name='manage_groups'),
 
 ]
