@@ -9,7 +9,7 @@ from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
 from collections import defaultdict
 import statistics
-from .models import Election, Vote, Invitation, ConflictOfInterest
+from .models import Election, Vote, Invitation, ConflictOfInterest, ElectorGroup
 from .services import generate_ballot_paper, register_votes
 from .forms import ElectorForm, ElectionForm, CandidateForm, ConflictOfInterestForm
 from .decorators import admin_required
@@ -116,6 +116,8 @@ def add_elector(request):
 @login_required
 @user_passes_test(is_staff)
 def add_election(request):
+    elector_groups = ElectorGroup.objects.all()
+
     if request.method == 'POST':
         form = ElectionForm(request.POST)
         if form.is_valid():
@@ -125,7 +127,7 @@ def add_election(request):
     else:
         form = ElectionForm()
 
-    return render(request, 'elections/add_election.html', {'form': form})
+    return render(request, 'elections/add_election.html', {'form': form, 'elector_groups': elector_groups})
 
 @login_required
 @user_passes_test(is_staff)
@@ -422,3 +424,4 @@ def close_election(request, election_id):
     election.close()
     messages.success(request, f"L'élection '{election.title}' a été fermée avec succès.")
     return redirect('detail_election', election_id=election.id)
+

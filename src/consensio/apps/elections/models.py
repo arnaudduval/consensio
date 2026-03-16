@@ -10,6 +10,24 @@ class Elector(models.Model):
     def __str__(self):
         return self.name
 
+class ElectorGroup(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+class ElectorGroupMembership(models.Model):
+    elector = models.ForeignKey(Elector, on_delete=models.CASCADE)
+    group = models.ForeignKey(ElectorGroup, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('elector', 'group')  # prevent duplicate membership
+
+    def __str__(self):
+        return f'{self.elector} in {self.group}'
+
 
 class Election(models.Model):
     title = models.CharField(max_length=200)

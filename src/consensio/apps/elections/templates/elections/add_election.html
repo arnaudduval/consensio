@@ -45,7 +45,33 @@
             dateFormat: "Y-m-d H:i",
             locale: "fr"
         });
+
+
+        // Gérer l'ajout des électeurs par groupe
+        const electorSelect = document.getElementById('id_electors');
+        const addGroupButtons = document.querySelectorAll('.add-group-electors');
+
+        addGroupButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                fetch(`/get-electors-by-group/${groupId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const electors = data.electors;
+                        electors.forEach(electorId => {
+                            const option = document.querySelector(`#id_electors option[value="${electorId}"]`);
+                            if (option) {
+                                option.selected = true;
+                            }
+                        });
+                        // Mettre à jour l'affichage du sélecteur
+                        $(electorSelect).trigger('change');
+                    })
+                    .catch(error => console.error('Erreur:', error));
+            });
+        });
     });
+
 </script>
 
 {% endblock %}
