@@ -25,6 +25,15 @@ def is_staff(user):
     return user.is_staff
 
 
+@login_required
+@user_passes_test(is_staff, login_url='/accounts/login/')
+def delete_election(request, election_id):
+    election = get_object_or_404(Election, id=election_id)
+    if request.method == 'POST':
+        election.delete()
+        messages.success(request, f"L'élection '{election.title}' a été supprimée avec succès.")
+    return redirect('index')
+
 def index(request):
     now = timezone.now()
 
@@ -40,8 +49,10 @@ def index(request):
     context = {
         'open_elections': open_elections,
         'closed_elections': closed_elections,
+        'is_staff': request.user.is_staff,
     }
     return render(request, 'elections/index.html', context)
+
 
 def vote_election(request, election_id, token):
     election = Election.objects.get(id=election_id)

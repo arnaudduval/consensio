@@ -2,7 +2,13 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Élections en cours</h1>
+    <h1 class="mb-4">Élections en cours
+        {% if is_staff %}
+        <a href="{% url 'add_election' %}" class="btn btn-sm btn-success float-end">
+            <i class="bi bi-plus-circle"></i> Ajouter une élection
+        </a>
+        {% endif %}
+    </h1>
 
     {% if open_elections %}
     <div class="row">
@@ -10,8 +16,19 @@
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">{{ election.title }}</h5>
-                    <p class="card-text">{{ election.description|truncatechars:100 }}</p>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-0">{{ election.title }}</h5>
+                        {% if is_staff %}
+                        <form method="post" action="{% url 'delete_election' election.id %}"
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette élection ? Cette action est irréversible.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger p-0" style="width: 30px; height: 30px;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <p class="card-text mt-2">{{ election.description|truncatechars:100 }}</p>
                     <p class="card-text">
                         <small class="text-muted">
                             Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}
@@ -27,7 +44,13 @@
     <p>Aucune élection en cours.</p>
     {% endif %}
 
-    <h1 class="mb-4 mt-5">Élections terminées</h1>
+    <h1 class="mb-4 mt-5">Élections terminées
+        {% if is_staff %}
+        <a href="{% url 'add_election' %}" class="btn btn-sm btn-success float-end">
+            <i class="bi bi-plus-circle"></i> Ajouter une élection
+        </a>
+        {% endif %}
+    </h1>
 
     {% if closed_elections %}
     <div class="row">
@@ -35,8 +58,19 @@
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">{{ election.title }}</h5>
-                    <p class="card-text">{{ election.description|truncatechars:100 }}</p>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-0">{{ election.title }}</h5>
+                        {% if is_staff %}
+                        <form method="post" action="{% url 'delete_election' election.id %}"
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette élection ? Cette action est irréversible.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger p-0" style="width: 30px; height: 30px;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <p class="card-text mt-2">{{ election.description|truncatechars:100 }}</p>
                     <p class="card-text">
                         <small class="text-muted">
                             Du {{ election.start_date|date:"d/m/Y H:i" }} au {{ election.end_date|date:"d/m/Y H:i" }}
@@ -56,4 +90,20 @@
     <p>Aucune élection terminée.</p>
     {% endif %}
 </div>
+
+<!-- {% if messages %}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    {% for message in messages %}
+    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            {{ message }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %} -->
 {% endblock %}
