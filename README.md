@@ -29,3 +29,18 @@ Once virtual environment is activated, run :
 `python manage.py createsuperuser`
 
 
+## Changelog
+
+### 0.2.0
+
+ - Add elector groups
+ - Add CSV import of electors
+ - Add CSV import of candidates
+ - Add interactive toggling fo conflicts of interest
+ - Improve electors/candidates management of existing election
+ - Simplify ex-aequo managment : only display, no resolution
+
+### 0.1.0
+
+Initial version
+
