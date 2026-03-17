@@ -589,6 +589,7 @@ def send_invitations(request, election_id):
 def detail_election(request, election_id):
     if not request.user.is_staff:
         return redirect('public_detail_election', election_id=election_id)
+
     election = get_object_or_404(Election, id=election_id)
     conflicts = ConflictOfInterest.objects.filter(candidate__election=election)
 
@@ -612,11 +613,12 @@ def detail_election(request, election_id):
     else:
         form = AddElectorForm(election=election)
 
-
-    return render(request, 'elections/detail_election.html',{
+    return render(request, 'elections/detail_election.html', {
         'election': election,
         'conflicts_matrix': conflicts_matrix,
-        'form': form})
+        'form': form,
+        'can_edit': not election.invitations_sent_at and not election.is_closed
+    })
 
 
 def public_detail_election(request, election_id):
@@ -678,6 +680,65 @@ def close_election(request, election_id):
     messages.success(request, f"L'élection '{election.title}' a été fermée avec succès.")
     return redirect('detail_election', election_id=election.id)
 
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def delete_elector(request, election_id):
+    election = get_object_or_404(Election, id=election_id)
+
+    if election.invitations_sent_at is not None:
+        return JsonResponse({
+            'success': False,
+            'message': 'Les invitations ont déjà été envoyées, impossible de supprimer un électeur.'
+        }, status=400)
+
+    elector_id = request.POST.get('elector_id')
+    if not elector_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'ID de l\'électeur manquant.'
+        }, status=400)
+
+    elector = get_object_or_404(Elector, id=elector_id)
+
+    if elector in election.electors.all():
+        election.electors.remove(elector)
+        return JsonResponse({
+            'success': True,
+            'message': f"L'électeur {elector.name} a été supprimé avec succès."
+        })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': "Cet électeur n'est pas dans cette élection."
+        }, status=400)
+
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def delete_candidate(request, election_id):
+    election = get_object_or_404(Election, id=election_id)
+
+    if election.invitations_sent_at is not None:
+        return JsonResponse({
+            'success': False,
+            'message': 'Les invitations ont déjà été envoyées, impossible de supprimer un candidat.'
+        }, status=400)
+
+    candidate_id = request.POST.get('candidate_id')
+    if not candidate_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'ID du candidat manquant.'
+        }, status=400)
+
+    candidate = get_object_or_404(Candidate, id=candidate_id, election=election)
+    candidate.delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': f"Le candidat {candidate.name} a été supprimé avec succès."
+    })
 
 @login_required
 @user_passes_test(is_staff)

@@ -9,14 +9,14 @@
     <div class="mt-4">
         <div class="d-flex justify-content-between align-items-center">
             <h3>Électeurs</h3>
-            {% if not election.is_closed and not election.invitations_sent_at %}
+            {% if can_edit %}
                 <button id="toggleAddElectorForm" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-pencil"></i> Ajouter un électeur
                 </button>
             {% endif %}
         </div>
 
-        {% if not election.is_closed and not election.invitations_sent_at %}
+        {% if can_edit %}
         <div id="addElectorFormContainer" class="card mb-4 mt-2" style="display: none;">
             <div class="card-body">
                 <form method="post">
@@ -33,20 +33,70 @@
         </div>
         {% endif %}
 
-        <ul>
-            {% for elector in election.electors.all %}
-                <li>{{ elector.name }} ({{ elector.email }})</li>
-            {% endfor %}
-        </ul>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        {% if can_edit %}
+                        <th class="text-center">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for elector in election.electors.all %}
+                    <tr>
+                        <td>{{ elector.name }}</td>
+                        <td>{{ elector.email }}</td>
+                        {% if can_edit %}
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger delete-elector"
+                                    data-elector-id="{{ elector.id }}"
+                                    data-elector-name="{{ elector.name }}"
+                                    title="Supprimer cet électeur">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="mt-4">
         <h3>Candidats</h3>
-        <ul>
-            {% for candidate in election.candidates.all %}
-                <li>{{ candidate.name }}</li>
-            {% endfor %}
-        </ul>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        {% if can_edit %}
+                        <th class="text-center">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidate in election.candidates.all %}
+                    <tr>
+                        <td>{{ candidate.name }}</td>
+                        {% if can_edit %}
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger delete-candidate"
+                                    data-candidate-id="{{ candidate.id }}"
+                                    data-candidate-name="{{ candidate.name }}"
+                                    title="Supprimer ce candidat">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     {% load custom_filters %}
@@ -117,6 +167,26 @@
     </div>
 </div>
 
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmation de suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir supprimer <span id="itemToDeleteName"></span> ?
+                Cette action est irréversible.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Gestion de l'affichage du formulaire d'ajout d'électeur
@@ -170,6 +240,89 @@
                     console.error('Erreur:', error);
                     alert('Une erreur est survenue lors de la mise à jour du conflit d\'intérêt.');
                 });
+            });
+        });
+
+        // Gestion de la suppression des électeurs
+        const deleteElectorButtons = document.querySelectorAll('.delete-elector');
+        deleteElectorButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const electorId = this.getAttribute('data-elector-id');
+                const electorName = this.getAttribute('data-elector-name');
+
+                // Afficher la modal de confirmation
+                const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                document.getElementById('itemToDeleteName').textContent = `l'électeur "${electorName}"`;
+
+                // Stocker l'electorId dans un attribut de la modal pour le récupérer plus tard
+                document.getElementById('confirmDeleteButton').setAttribute('data-elector-id', electorId);
+                document.getElementById('confirmDeleteButton').setAttribute('data-type', 'elector');
+
+                modal.show();
+            });
+        });
+
+        // Gestion de la suppression des candidats
+        const deleteCandidateButtons = document.querySelectorAll('.delete-candidate');
+        deleteCandidateButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const candidateId = this.getAttribute('data-candidate-id');
+                const candidateName = this.getAttribute('data-candidate-name');
+
+                // Afficher la modal de confirmation
+                const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                document.getElementById('itemToDeleteName').textContent = `le candidat "${candidateName}"`;
+
+                // Stocker le candidateId dans un attribut de la modal pour le récupérer plus tard
+                document.getElementById('confirmDeleteButton').setAttribute('data-candidate-id', candidateId);
+                document.getElementById('confirmDeleteButton').setAttribute('data-type', 'candidate');
+
+                modal.show();
+            });
+        });
+
+        // Gestion du clic sur le bouton de confirmation de suppression
+        document.getElementById('confirmDeleteButton').addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            let url, body;
+
+            if (type === 'elector') {
+                const electorId = this.getAttribute('data-elector-id');
+                url = `{% url 'delete_elector' election.id %}`;
+                body = `elector_id=${electorId}`;
+            } else if (type === 'candidate') {
+                const candidateId = this.getAttribute('data-candidate-id');
+                url = `{% url 'delete_candidate' election.id %}`;
+                body = `candidate_id=${candidateId}`;
+            }
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: body
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Supprimer la ligne du tableau
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+                    modal.hide();
+
+                    // Afficher un message de succès
+                    alert(data.message);
+
+                    // Recharger la page pour mettre à jour les données
+                    window.location.reload();
+                } else {
+                    alert(`Erreur : ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de la suppression.');
             });
         });
     });
