@@ -286,6 +286,7 @@ from collections import defaultdict
 from .models import Election, Vote, Candidate, ConflictOfInterest
 
 
+
 def calculate_median_grade(candidate_votes):
     """Calcule la note médiane selon la méthode officielle du jugement majoritaire."""
     notes_order = {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}
@@ -408,7 +409,6 @@ def resolve_tie_recursive(tie_group, vote_details, candidates_dict, depth=0):
 
     return resolution
 
-
 def resolve_ties(sorted_candidates, vote_details, candidates_dict):
     """Résout les ex-aequo en utilisant la méthode officielle."""
     final_ranking = []
@@ -441,7 +441,7 @@ def resolve_ties(sorted_candidates, vote_details, candidates_dict):
                 })
                 # Ajouter tous les candidats avec le même rang
                 for c_id in tie_group:
-                    final_ranking.append((candidates_dict[c_id], current_rank))
+                    final_ranking.append((candidates_dict[c_id], current_rank, True, len(tie_group)))
             else:
                 tie_breakdown.append({
                     'candidates': tie_group,
@@ -451,10 +451,12 @@ def resolve_ties(sorted_candidates, vote_details, candidates_dict):
                 })
                 # Trier selon la résolution
                 sorted_tie_group = sorted(tie_group, key=lambda x: resolution.get(x, 0))
-                final_ranking.extend([(candidates_dict[c_id], current_rank + k) for k, c_id in enumerate(sorted_tie_group)])
+                for k, c_id in enumerate(sorted_tie_group):
+                    is_tie = k > 0 and resolution[c_id] == resolution[sorted_tie_group[k-1]]
+                    final_ranking.append((candidates_dict[c_id], current_rank + k, is_tie, 0))
                 current_rank += len(tie_group)
         else:
-            final_ranking.append((candidates_dict[tie_group[0]], current_rank))
+            final_ranking.append((candidates_dict[tie_group[0]], current_rank, False, 0))
             current_rank += 1
 
         i = j
@@ -509,33 +511,28 @@ def results_election(request, election_id):
             'note': vote.get_note_display()
         })
 
-    # Préparer les données pour le template avec indication des ex-aequo
-    final_ranking_with_ties = []
+    # Calculer les positions réelles en tenant compte des ex-aequo
+    display_ranking = []
+    current_display_rank = 1
     previous_rank = None
 
-    for candidate, rank in final_ranking:
-        is_tie = previous_rank is not None and rank == previous_rank
-        final_ranking_with_ties.append((candidate, rank, is_tie))
+    rank_count = 1
+    for candidate, rank, is_tie, tie_size in final_ranking:
+        if previous_rank is None or rank != previous_rank:
+            current_display_rank = rank
+        if not is_tie:
+            current_display_rank = rank_count
+        display_ranking.append((candidate, current_display_rank, is_tie and tie_size > 1))
         previous_rank = rank
-
-    # Préparer les données pour tie_breakdown
-    tie_breakdown_data = []
-    for tie in tie_breakdown:
-        tie_data = {
-            'candidates': tie['candidates'],  # Garder les IDs des candidats
-            'median': tie['median'],
-            'resolution': tie['resolution'],
-            'is_tie': tie.get('is_tie', False)
-        }
-        tie_breakdown_data.append(tie_data)
+        rank_count += 1
 
     return render(request, 'elections/results.html', {
         'election': election,
         'results': results,
         'medians': medians,
         'final_ranking': final_ranking,
-        'final_ranking_with_ties': final_ranking_with_ties,
-        'tie_breakdown': tie_breakdown_data,
+        'display_ranking': display_ranking,
+        'tie_breakdown': tie_breakdown,
         'ballots': dict(ballots),
         'notes_info': {
             'E': {'label': 'Excellent', 'order': 0, 'color': 'success'},
@@ -548,7 +545,6 @@ def results_election(request, election_id):
         'notes_labels': {'0': 'Excellent', '1': 'Très bien', '2': 'Bien', '3': 'Passable', '4': 'À rejeter'},
         'candidates_dict': candidates_dict,
     })
-
 
 
 def custom_logout(request):

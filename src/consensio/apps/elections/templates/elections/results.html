@@ -29,19 +29,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for candidate, rank, is_tie in final_ranking_with_ties %}
-                        <tr class="{% if rank == 1 %}table-success{% elif rank == 2 %}table-primary{% elif rank == 3 %}table-warning{% endif %}">
+                        {% for candidate, display_rank, is_tie in display_ranking %}
+                        <tr class="{% if display_rank == 1 %}table-success{% elif display_rank == 2 %}table-primary{% elif display_rank == 3 %}table-warning{% endif %}">
                             <td class="text-center">
+                                {{ display_rank }}
                                 {% if is_tie %}
                                     <span class="badge bg-secondary">Ex-aequo</span>
-                                {% elif rank == 1 %}
-                                    <span class="badge bg-gold fs-5">🥇</span>
-                                {% elif rank == 2 %}
-                                    <span class="badge bg-silver fs-5">🥈</span>
-                                {% elif rank == 3 %}
-                                    <span class="badge bg-bronze fs-5">🥉</span>
-                                {% else %}
-                                    {{ rank }}
                                 {% endif %}
                             </td>
                             <td class="fw-bold">
@@ -238,6 +231,7 @@
         </div>
     </div>
     {% endif %}
+
 
     <div class="mt-4">
         <h3>Répartition détaillée des notes</h3>
