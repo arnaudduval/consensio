@@ -279,6 +279,13 @@ def add_conflict_of_interest(request):
 
     return render(request, 'elections/add_conflict_of_interest.html', {'form': form})
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.utils import timezone
+from collections import defaultdict
+from .models import Election, Vote, Candidate, ConflictOfInterest
+
+
 def calculate_median_grade(candidate_votes):
     """Calcule la note médiane selon la méthode officielle du jugement majoritaire."""
     notes_order = {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}
@@ -329,40 +336,78 @@ def resolve_tie_recursive(tie_group, vote_details, candidates_dict, depth=0):
 
     # Si tous les candidats ont la même mention majoritaire, on passe à l'étape suivante
     if len(mention_groups) == 1:
-        # Trouver l'électeur médian pour chaque candidat
-        median_voters = {}
+        # Trouver la note médiane pour chaque candidat
+        median_notes = {}
         for candidate_id in tie_group:
             votes = candidates_votes[candidate_id]
             n = len(votes)
             if n > 0:
-                # Trouver l'électeur médian (celui qui a déterminé la mention majoritaire)
-                # Pour cela, on trouve le premier vote qui correspond à la mention majoritaire
-                # en partant du milieu
                 notes_order = {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}
                 sorted_votes = sorted([notes_order[vote.note] for vote in votes])
-                median_note = majority_mentions[candidate_id]
-                median_note_value = notes_order[median_note]
 
-                # Trouver l'indice du premier vote égal à median_note_value
-                median_index = sorted_votes.index(median_note_value)
+                # Calculer la médiane
+                median_note_value = calculate_median_grade(votes)
+                median_notes[candidate_id] = median_note_value
 
-                # Retirer ce vote pour la prochaine itération
-                new_votes = votes[:median_index] + votes[median_index+1:]
-                vote_details[candidate_id] = new_votes
+        # Grouper les candidats par note médiane
+        median_groups = defaultdict(list)
+        for candidate_id, median_note in median_notes.items():
+            median_groups[median_note].append(candidate_id)
 
-        # Appel récursif
-        return resolve_tie_recursive(tie_group, vote_details, candidates_dict, depth + 1)
+        # Si tous les candidats ont la même note médiane, on utilise la note majoritaire
+        if len(median_groups) == 1:
+            # Utiliser la note majoritaire pour départager
+            note_counts = defaultdict(lambda: defaultdict(int))
+            for candidate_id, votes in candidates_votes.items():
+                for vote in votes:
+                    note_counts[candidate_id][vote.note] += 1
+
+            # Trouver la note majoritaire pour chaque candidat
+            majority_note_counts = {}
+            for candidate_id, notes in note_counts.items():
+                if notes:
+                    majority_note = max(notes.items(), key=lambda x: x[1])[0]
+                    majority_note_counts[candidate_id] = {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}[majority_note]
+                else:
+                    majority_note_counts[candidate_id] = float('inf')
+
+            # Vérifier si tous les candidats ont la même note majoritaire
+            if len(set(majority_note_counts.values())) == 1:
+                # Tous les candidats ont la même note majoritaire, c'est un ex-aequo non résolu
+                resolution = {}
+                for candidate_id in tie_group:
+                    resolution[candidate_id] = 0
+                return resolution
+
+            # Trier les candidats par note majoritaire
+            sorted_candidates = sorted(tie_group, key=lambda x: majority_note_counts[x])
+
+            resolution = {}
+            for rank, candidate_id in enumerate(sorted_candidates):
+                resolution[candidate_id] = rank
+
+            return resolution
+
+        # Sinon, les candidats sont départagés par leur note médiane
+        resolution = {}
+        rank = 0
+        for median_note in sorted(median_groups.keys()):
+            for candidate_id in median_groups[median_note]:
+                resolution[candidate_id] = rank
+            rank += 1
+
+        return resolution
 
     # Sinon, les candidats sont départagés par leur mention majoritaire
     resolution = {}
     rank = 0
-    print(f"{mention_groups = }")
     for mention in sorted(mention_groups.keys(), key=lambda x: {'E': 0, 'TB': 1, 'B': 2, 'P': 3, 'R': 4}[x]):
         for candidate_id in mention_groups[mention]:
             resolution[candidate_id] = rank
         rank += 1
 
     return resolution
+
 
 def resolve_ties(sorted_candidates, vote_details, candidates_dict):
     """Résout les ex-aequo en utilisant la méthode officielle."""
@@ -385,16 +430,29 @@ def resolve_ties(sorted_candidates, vote_details, candidates_dict):
             # Résoudre l'ex-aequo avec la méthode récursive
             resolution = resolve_tie_recursive(tie_group, vote_details, candidates_dict)
 
-            tie_breakdown.append({
-                'candidates': [candidates_dict[c_id] for c_id in tie_group],
-                'median': current_median,
-                'resolution': resolution
-            })
-
-            # Trier selon la résolution
-            sorted_tie_group = sorted(tie_group, key=lambda x: resolution.get(x, 0))
-            final_ranking.extend([(candidates_dict[c_id], current_rank + k) for k, c_id in enumerate(sorted_tie_group)])
-            current_rank += len(tie_group)
+            # Vérifier si tous les candidats ont le même rang (ex-aequo non résolu)
+            ranks = list(resolution.values())
+            if len(set(ranks)) == 1:  # Tous les candidats ont le même rang
+                tie_breakdown.append({
+                    'candidates': tie_group,
+                    'median': current_median,
+                    'resolution': resolution,
+                    'is_tie': True  # Indique que c'est un ex-aequo non résolu
+                })
+                # Ajouter tous les candidats avec le même rang
+                for c_id in tie_group:
+                    final_ranking.append((candidates_dict[c_id], current_rank))
+            else:
+                tie_breakdown.append({
+                    'candidates': tie_group,
+                    'median': current_median,
+                    'resolution': resolution,
+                    'is_tie': False
+                })
+                # Trier selon la résolution
+                sorted_tie_group = sorted(tie_group, key=lambda x: resolution.get(x, 0))
+                final_ranking.extend([(candidates_dict[c_id], current_rank + k) for k, c_id in enumerate(sorted_tie_group)])
+                current_rank += len(tie_group)
         else:
             final_ranking.append((candidates_dict[tie_group[0]], current_rank))
             current_rank += 1
@@ -451,15 +509,33 @@ def results_election(request, election_id):
             'note': vote.get_note_display()
         })
 
-    print(f'{results = }')
-    print(f'{tie_breakdown = }')
+    # Préparer les données pour le template avec indication des ex-aequo
+    final_ranking_with_ties = []
+    previous_rank = None
+
+    for candidate, rank in final_ranking:
+        is_tie = previous_rank is not None and rank == previous_rank
+        final_ranking_with_ties.append((candidate, rank, is_tie))
+        previous_rank = rank
+
+    # Préparer les données pour tie_breakdown
+    tie_breakdown_data = []
+    for tie in tie_breakdown:
+        tie_data = {
+            'candidates': tie['candidates'],  # Garder les IDs des candidats
+            'median': tie['median'],
+            'resolution': tie['resolution'],
+            'is_tie': tie.get('is_tie', False)
+        }
+        tie_breakdown_data.append(tie_data)
 
     return render(request, 'elections/results.html', {
         'election': election,
         'results': results,
         'medians': medians,
         'final_ranking': final_ranking,
-        'tie_breakdown': tie_breakdown,
+        'final_ranking_with_ties': final_ranking_with_ties,
+        'tie_breakdown': tie_breakdown_data,
         'ballots': dict(ballots),
         'notes_info': {
             'E': {'label': 'Excellent', 'order': 0, 'color': 'success'},
@@ -472,6 +548,7 @@ def results_election(request, election_id):
         'notes_labels': {'0': 'Excellent', '1': 'Très bien', '2': 'Bien', '3': 'Passable', '4': 'À rejeter'},
         'candidates_dict': candidates_dict,
     })
+
 
 
 def custom_logout(request):

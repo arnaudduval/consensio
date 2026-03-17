@@ -6,22 +6,24 @@ register = template.Library()
 def get_item(dictionary, key):
     return dictionary.get(key)
 
-@register.filter
-def get_candidate(candidates_dict, candidate_id):
-    return candidates_dict.get(int(candidate_id))
-
 # @register.filter
-# def get_candidate(candidates, candidate_id):
-#     for candidate in candidates:
-#         if candidate.id == candidate_id:
-#             return candidate
-#     return None
+# def get_candidate(candidates_dict, candidate_id):
+#     return candidates_dict.get(int(candidate_id))
+
 
 @register.filter
-def percentage(value, total):
-    if total == 0:
+def get_candidate(dictionary, candidate_id):
+    try:
+        return dictionary.get(int(candidate_id))
+    except (ValueError, TypeError):
+        return None
+
+@register.filter
+def percentage(part, whole):
+    try:
+        return round((float(part) / float(whole)) * 100)
+    except (ValueError, ZeroDivisionError):
         return 0
-    return round((value / total) * 100)
 
 @register.filter
 def median_position(median, notes):
@@ -40,3 +42,10 @@ def median_position(median, notes):
             return round(((cumulative - count/2) / total) * 100)
 
     return 0
+
+@register.filter
+def candidate_id(dictionary, key):
+    for candidate_id, candidate in dictionary.items():
+        if str(candidate_id) == str(key):
+            return candidate
+    return None
