@@ -29,12 +29,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for candidate, display_rank, is_tie in display_ranking %}
-                        <tr class="{% if display_rank == 1 %}table-success{% elif display_rank == 2 %}table-primary{% elif display_rank == 3 %}table-warning{% endif %}">
+                        {% for candidate, rank, is_tie, tie_size in final_ranking %}
+                        <tr class="{% if rank == 1 %}table-success{% elif rank == 2 %}table-primary{% elif rank == 3 %}table-warning{% endif %}">
                             <td class="text-center">
-                                {{ display_rank }}
+                                {{ rank }}
                                 {% if is_tie %}
-                                    <span class="badge bg-secondary">Ex-aequo</span>
+                                    <span class="badge bg-info ms-1">Ex-aequo</span>
                                 {% endif %}
                             </td>
                             <td class="fw-bold">
@@ -106,41 +106,34 @@
 
     {% if tie_breakdown %}
     <div class="mt-4">
-        <h3>Résolution des ex-aequo</h3>
+        <h3>Ex-aequo</h3>
         <div class="accordion" id="tieBreakdownAccordion">
             {% for tie in tie_breakdown %}
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingTie{{ forloop.counter }}">
-                    <button class="accordion-button {% if not tie.is_tie %}collapsed{% endif %}" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapseTie{{ forloop.counter }}" aria-expanded="{% if tie.is_tie %}true{% else %}false{% endif %}"
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseTie{{ forloop.counter }}" aria-expanded="false"
                             aria-controls="collapseTie{{ forloop.counter }}">
                         <div class="d-flex align-items-center">
                             <span class="me-2">Ex-aequo #{{ forloop.counter }}</span>
                             {% with med=tie.median|stringformat:"s" %}
                             <span class="badge bg-primary ms-2">
-                                Médiane : {{ notes_labels|get_item:med|default:"N/A" }}
+                                Médiane : {{ notes_labels|get_item:med }}
                             </span>
                             {% endwith %}
                             <span class="badge bg-secondary ms-2">
                                 {{ tie.candidates|length }} candidat(s)
                             </span>
-                            {% if tie.is_tie %}
-                            <span class="badge bg-warning ms-2">Non résolu</span>
-                            {% endif %}
                         </div>
                     </button>
                 </h2>
-                <div id="collapseTie{{ forloop.counter }}" class="accordion-collapse {% if tie.is_tie %}show{% else %}collapse{% endif %}"
+                <div id="collapseTie{{ forloop.counter }}" class="accordion-collapse collapse"
                     aria-labelledby="headingTie{{ forloop.counter }}" data-bs-parent="#tieBreakdownAccordion">
                     <div class="accordion-body">
                         <h5 class="mb-3">Candidats concernés :</h5>
                         <ul class="list-group list-group-flush mb-4">
-                            {% for candidate_id in tie.candidates %}
-                            <li class="list-group-item">
-                                {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                {{ candidate.name }}
-                                {% endwith %}
-                            </li>
+                            {% for candidate in tie.candidates %}
+                            <li class="list-group-item">{{ candidate.name }}</li>
                             {% endfor %}
                         </ul>
 
@@ -158,72 +151,19 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for candidate_id in tie.candidates %}
+                                    {% for candidate in tie.candidates %}
                                     <tr>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ candidate.name }}
-                                            {% endwith %}
-                                        </td>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ results|get_item:candidate|get_item:'E' }}
-                                            {% endwith %}
-                                        </td>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ results|get_item:candidate|get_item:'TB' }}
-                                            {% endwith %}
-                                        </td>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ results|get_item:candidate|get_item:'B' }}
-                                            {% endwith %}
-                                        </td>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ results|get_item:candidate|get_item:'P' }}
-                                            {% endwith %}
-                                        </td>
-                                        <td>
-                                            {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                            {{ results|get_item:candidate|get_item:'R' }}
-                                            {% endwith %}
-                                        </td>
+                                        <td>{{ candidate.name }}</td>
+                                        <td>{{ results|get_item:candidate|get_item:'E' }}</td>
+                                        <td>{{ results|get_item:candidate|get_item:'TB' }}</td>
+                                        <td>{{ results|get_item:candidate|get_item:'B' }}</td>
+                                        <td>{{ results|get_item:candidate|get_item:'P' }}</td>
+                                        <td>{{ results|get_item:candidate|get_item:'R' }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
-
-                        <h5 class="mb-3">Résolution :</h5>
-                        {% if tie.is_tie %}
-                        <div class="alert alert-warning">
-                            <p class="mb-0">Ces candidats ne peuvent pas être départagés avec la méthode du jugement majoritaire.</p>
-                        </div>
-                        {% else %}
-                        <p class="text-muted mb-2">
-                            Méthode récursive officielle du jugement majoritaire :
-                        </p>
-                        <ol class="mb-0">
-                            {% for candidate_id, rank in tie.resolution.items %}
-                            <li class="mb-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span>
-                                        {% with candidate=candidates_dict|get_candidate:candidate_id %}
-                                        {{ candidate.name }}
-                                        {% endwith %}
-                                    </span>
-                                    {% if rank == 0 %}
-                                    <span class="badge bg-success">Meilleur</span>
-                                    {% else %}
-                                    <span class="badge bg-light text-dark">Position {{ rank|add:1 }}</span>
-                                    {% endif %}
-                                </div>
-                            </li>
-                            {% endfor %}
-                        </ol>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -289,6 +229,8 @@
                                         </div>
                                     </div>
                                     {% endfor %}
+
+
                                 {% else %}
                                     <div class="alert alert-info mb-0">
                                         Aucun vote enregistré pour ce candidat.
@@ -352,27 +294,4 @@
         <a href="{% url 'detail_election' election.id %}" class="btn btn-secondary">Retour aux détails</a>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    .bg-gold {
-        background-color: #FFD700;
-        color: black;
-    }
-    .bg-silver {
-        background-color: #C0C0C0;
-        color: black;
-    }
-    .bg-bronze {
-        background-color: #CD7F32;
-        color: black;
-    }
-    .note-progress {
-        margin-bottom: 1rem;
-    }
-    .percentage {
-        font-size: 0.875rem;
-    }
-</style>
 {% endblock %}
