@@ -20,7 +20,7 @@ from django.contrib.auth import views as auth_views
 from apps.elections.views import custom_logout, CustomLoginView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls, name='admin'),
     path('', include('apps.elections.urls')),
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', custom_logout, name='logout'),
