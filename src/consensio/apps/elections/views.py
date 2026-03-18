@@ -123,7 +123,7 @@ def add_elector(request):
     if request.method == 'POST':
         # Manually add an elector
         if 'add_single_elector' in request.POST:
-            form = ElectorForm(request.POST)
+            form = ElectorForm(request.POST, prefix='single')
             if form.is_valid():
                 form.save()
                 messages.success(request, "L'électeur a été ajouté avec succès !")

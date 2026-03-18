@@ -31,7 +31,10 @@ Once virtual environment is activated, run :
 
 ## Changelog
 
-### 0.2.0
+### 0.2.2
+ - Fix a bug in elector add form
+
+### 0.2.1
  - Fix issue when accessing to admin URL
 
 ### 0.2.0
