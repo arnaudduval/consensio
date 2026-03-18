@@ -32,6 +32,9 @@ Once virtual environment is activated, run :
 ## Changelog
 
 ### 0.2.0
+ - Fix issue when accessing to admin URL
+
+### 0.2.0
 
  - Add elector groups
  - Add CSV import of electors
